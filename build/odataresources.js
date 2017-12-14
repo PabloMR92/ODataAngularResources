@@ -53,20 +53,24 @@ angular.module('ODataResources').
 factory('$odataValue', [
 
     function() {
+        var illegalChars = {
+            '%': '%25',
+            '+': '%2B',
+            '/': '%2F',
+            '?': '%3F',
+            '#': '%23',
+            '&': '%26'
+        };
         var escapeIllegalChars = function(string) {
-            string = string.replace(/%/g, "%25");
-            string = string.replace(/\+/g, "%2B");
-            string = string.replace(/\//g, "%2F");
-            string = string.replace(/\?/g, "%3F");
-            string = string.replace(/#/g, "%23");
-            string = string.replace(/&/g, "%26");
+            for (var key in illegalChars) {
+                string = string.replace(key, illegalChars[key]);
+            }
             string = string.replace(/'/g, "''");
             return string;
         };
-        var ODataValue = function(input, type, isCustomType) {
+        var ODataValue = function(input, type) {
             this.value = input;
             this.type = type;
-			this.isCustomType = isCustomType;
         };
 
         var generateDate = function(date,isOdataV4){
@@ -155,9 +159,7 @@ factory('$odataValue', [
 	        		return this.value;
 	        	}else if(this.type.toLowerCase() === "int32"){
 	        		return parseInt(this.value)+"";
-	        	}else if(this.isCustomType){
-					return this.type + "'" + this.value + "'";
-				}else{
+	        	}else {
 	        		throw "Cannot convert "+this.value+" into "+this.type;
 	        	}
         	}else if(!isNaN(this.value)){
@@ -426,14 +428,14 @@ factory('$odataMethodCall', ['$odataProperty', '$odataValue',
             this.methodName = methodName;
         };
 
-        ODataMethodCall.prototype.execute = function() {
+        ODataMethodCall.prototype.execute = function(isv4) {
             var lambdaOperators = ["any", "all"];
-            var invocation = "";
+            var invocation = ""; 
 
             if(lambdaOperators.indexOf(this.methodName) > -1) {
                 for (var i = 0; i < this.params.length; i++) {
                     if (i === 0) {
-                        invocation += this.params[i].execute();
+                        invocation += this.params[i].execute(isv4);
                         invocation += "/";
                         invocation += this.methodName;
                     } else if(i === 1) {
@@ -441,7 +443,7 @@ factory('$odataMethodCall', ['$odataProperty', '$odataValue',
                         invocation += this.params[i].value;
                         invocation += ":";
                     } else {
-                        invocation += this.params[i].execute();
+                        invocation += this.params[i].execute(isv4);
                         invocation += ")";
                     }
                 }
